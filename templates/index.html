@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Chatbot</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0d0d0d; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+    canvas#particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+    .gradient-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: linear-gradient(270deg, #0d0d0d, #1a0a2e, #0d1a2e, #0a1a0a); background-size: 600% 600%; animation: gradientShift 12s ease infinite; }
+    @keyframes gradientShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+    .wrap { position: relative; z-index: 10; width: 440px; height: 620px; background: rgba(15,15,20,0.85); border-radius: 20px; display: flex; flex-direction: column; border: 1px solid rgba(108,99,255,0.4); overflow: hidden; backdrop-filter: blur(12px); animation: borderGlow 4s ease-in-out infinite; }
+    @keyframes borderGlow { 0%,100%{box-shadow:0 0 30px rgba(108,99,255,0.3),0 0 60px rgba(233,69,96,0.15);border-color:rgba(108,99,255,0.4)} 50%{box-shadow:0 0 40px rgba(233,69,96,0.4),0 0 80px rgba(108,99,255,0.2);border-color:rgba(233,69,96,0.5)} }
+
+    .header { padding: 18px 20px; background: rgba(20,20,30,0.9); border-bottom: 1px solid rgba(108,99,255,0.2); display: flex; align-items: center; gap: 12px; }
+    .header-avatar { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; filter: drop-shadow(0 0 8px rgba(108,99,255,0.8)); animation: avatarPulse 3s ease-in-out infinite; }
+    @keyframes avatarPulse { 0%,100%{filter:drop-shadow(0 0 8px rgba(108,99,255,0.8))} 50%{filter:drop-shadow(0 0 16px rgba(233,69,96,0.9))} }
+    .header-info h3 { color: #fff; font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+    .status { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #888; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; animation: dotPulse 2s infinite; }
+    @keyframes dotPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; scrollbar-width: thin; scrollbar-color: #333 transparent; }
+    .msg { display: flex; gap: 8px; max-width: 85%; animation: fadeSlideIn 0.3s ease; align-items: flex-start; }
+    .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+    @keyframes fadeSlideIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+    .msg-icon { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; align-self: flex-start; margin-top: 2px; }
+    .bot-msg-icon { filter: drop-shadow(0 0 5px rgba(108,99,255,0.7)); }
+    .user-msg-icon { filter: drop-shadow(0 0 5px rgba(100,180,255,0.6)); font-size: 26px; }
+
+    .bubble { padding: 10px 14px; border-radius: 16px; font-size: 13.5px; line-height: 1.6; }
+    .msg.bot .bubble { background: rgba(30,30,45,0.9); color: #ccc; border-bottom-left-radius: 4px; border: 1px solid rgba(108,99,255,0.2); box-shadow: 0 0 8px rgba(108,99,255,0.1); }
+    .msg.user .bubble { background: linear-gradient(135deg, #6c63ff, #e94560); color: #fff; border-bottom-right-radius: 4px; box-shadow: 0 0 12px rgba(108,99,255,0.4); }
+
+    .typing { display: flex; gap: 4px; padding: 10px 14px; background: rgba(30,30,45,0.9); border-radius: 16px; border-bottom-left-radius: 4px; border: 1px solid rgba(108,99,255,0.2); width: fit-content; }
+    .typing span { width: 6px; height: 6px; border-radius: 50%; background: #6c63ff; animation: bounce 1.2s infinite; box-shadow: 0 0 6px #6c63ff; }
+    .typing span:nth-child(2){animation-delay:.2s}
+    .typing span:nth-child(3){animation-delay:.4s}
+    @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+    .time { font-size: 10px; color: #444; margin-top: 3px; }
+    .msg.user .time { text-align: right; }
+
+    .input-area { padding: 12px; background: rgba(20,20,30,0.9); border-top: 1px solid rgba(108,99,255,0.2); display: flex; gap: 8px; align-items: center; }
+    .input-area input { flex: 1; background: rgba(30,30,45,0.9); border: 1px solid rgba(108,99,255,0.25); border-radius: 12px; padding: 10px 14px; color: #fff; font-size: 13.5px; outline: none; transition: border-color 0.3s, box-shadow 0.3s; }
+    .input-area input::placeholder { color: #444; }
+    .input-area input:focus { border-color: #6c63ff; box-shadow: 0 0 10px rgba(108,99,255,0.3); }
+    .send-btn { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #6c63ff, #e94560); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; color: white; box-shadow: 0 0 12px rgba(108,99,255,0.5); transition: transform 0.15s, box-shadow 0.3s; }
+    .send-btn:hover { transform: scale(1.08); box-shadow: 0 0 20px rgba(233,69,96,0.6); }
+    .send-btn:active { transform: scale(0.95); }
+  </style>
+</head>
+<body>
+  <div class="gradient-bg"></div>
+  <canvas id="particles"></canvas>
+
+  <div class="wrap">
+    <div class="header">
+      <div class="header-avatar">
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+          <rect x="9" y="13" width="18" height="14" rx="3" fill="white" opacity="0.9"/>
+          <rect x="14" y="7" width="8" height="7" rx="2" fill="white" opacity="0.9"/>
+          <line x1="18" y1="7" x2="18" y2="4" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="18" cy="3" r="1.5" fill="white"/>
+          <circle cx="14" cy="18" r="2.5" fill="#6c63ff"/>
+          <circle cx="22" cy="18" r="2.5" fill="#e94560"/>
+          <rect x="13" y="23" width="10" height="2" rx="1" fill="#6c63ff" opacity="0.8"/>
+          <rect x="6" y="16" width="3" height="7" rx="1.5" fill="white" opacity="0.7"/>
+          <rect x="27" y="16" width="3" height="7" rx="1.5" fill="white" opacity="0.7"/>
+          <rect x="13" y="27" width="3" height="5" rx="1.5" fill="white" opacity="0.7"/>
+          <rect x="20" y="27" width="3" height="5" rx="1.5" fill="white" opacity="0.7"/>
+        </svg>
+      </div>
+      <div class="header-info">
+        <h3>AI Assistant</h3>
+        <div class="status"><div class="dot"></div>Online</div>
+      </div>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="msg bot">
+        <div class="msg-icon bot-msg-icon">
+          <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
+            <rect x="9" y="13" width="18" height="14" rx="3" fill="white" opacity="0.9"/>
+            <rect x="14" y="7" width="8" height="7" rx="2" fill="white" opacity="0.9"/>
+            <circle cx="14" cy="18" r="2.5" fill="#6c63ff"/>
+            <circle cx="22" cy="18" r="2.5" fill="#e94560"/>
+            <rect x="6" y="16" width="3" height="7" rx="1.5" fill="white" opacity="0.7"/>
+            <rect x="27" y="16" width="3" height="7" rx="1.5" fill="white" opacity="0.7"/>
+          </svg>
+        </div>
+        <div>
+          <div class="bubble">Hey! I'm your AI assistant. How can I help you today? ✨</div>
+          <div class="time">Just now</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <input type="text" id="user-input" placeholder="Type a message..."/>
+      <button class="send-btn" onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('particles');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    const stars = Array.from({length:120}, () => ({
+      x: Math.random()*canvas.width, y: Math.random()*canvas.height,
+      r: Math.random()*1.5+0.3, speed: Math.random()*0.3+0.05, opacity: Math.random()
+    }));
+    function drawStars() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      stars.forEach(s => {
+        ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+        ctx.fillStyle=`rgba(180,160,255,${s.opacity})`; ctx.fill();
+        s.y -= s.speed;
+        s.opacity = 0.3+Math.abs(Math.sin(Date.now()*0.001+s.x));
+        if(s.y<0){s.y=canvas.height; s.x=Math.random()*canvas.width;}
+      });
+      requestAnimationFrame(drawStars);
+    }
+    drawStars();
+    window.addEventListener('resize',()=>{canvas.width=window.innerWidth;canvas.height=window.innerHeight;});
+
+    const botSVG = `<svg width="28" height="28" viewBox="0 0 36 36" fill="none"><rect x="9" y="13" width="18" height="14" rx="3" fill="white" opacity="0.9"/><rect x="14" y="7" width="8" height="7" rx="2" fill="white" opacity="0.9"/><circle cx="14" cy="18" r="2.5" fill="#6c63ff"/><circle cx="22" cy="18" r="2.5" fill="#e94560"/><rect x="6" y="16" width="3" height="7" rx="1.5" fill="white" opacity="0.7"/><rect x="27" y="16" width="3" height="7" rx="1.5" fill="white" opacity="0.7"/></svg>`;
+    const userSVG = `🧑‍🚀`;
+
+    function getTime(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
+
+    function showTyping(){
+      const box=document.getElementById('messages');
+      const div=document.createElement('div');
+      div.className='msg bot'; div.id='typing';
+      div.innerHTML=`<div class="msg-icon bot-msg-icon">${botSVG}</div><div class="typing"><span></span><span></span><span></span></div>`;
+      box.appendChild(div); box.scrollTop=box.scrollHeight;
+    }
+    function removeTyping(){const t=document.getElementById('typing');if(t)t.remove();}
+
+    function typewriterEffect(el,text,speed=18){
+      let i=0; el.textContent='';
+      const iv=setInterval(()=>{el.textContent+=text[i];i++;if(i>=text.length)clearInterval(iv);},speed);
+    }
+
+    function appendMessage(text,type){
+      const box=document.getElementById('messages');
+      const div=document.createElement('div');
+      div.className=`msg ${type}`;
+      const bubble=document.createElement('div'); bubble.className='bubble';
+      const wrapper=document.createElement('div');
+      const time=document.createElement('div'); time.className='time'; time.textContent=getTime();
+      wrapper.appendChild(bubble); wrapper.appendChild(time);
+      if(type==='bot'){
+        div.innerHTML=`<div class="msg-icon bot-msg-icon">${botSVG}</div>`;
+      } else {
+        const icon=document.createElement('div');
+        icon.className='msg-icon user-msg-icon';
+        icon.textContent=userSVG;
+        div.appendChild(icon);
+      }
+      div.appendChild(wrapper);
+      box.appendChild(div);
+      type==='bot'?typewriterEffect(bubble,text):(bubble.textContent=text);
+      box.scrollTop=box.scrollHeight;
+    }
+
+    async function sendMessage(){
+      const input=document.getElementById('user-input');
+      const message=input.value.trim();
+      if(!message)return;
+      appendMessage(message,'user');
+      input.value='';
+      showTyping();
+      try{
+        const res=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message})});
+        const data=await res.json();
+        removeTyping();
+        appendMessage(data.reply||'Something went wrong.','bot');
+      }catch{
+        removeTyping();
+        appendMessage('Error connecting to server.','bot');
+      }
+    }
+
+    document.getElementById('user-input').addEventListener('keypress',e=>{if(e.key==='Enter')sendMessage();});
+  </script>
+</body>
+</html>

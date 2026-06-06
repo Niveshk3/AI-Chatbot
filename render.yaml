@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ai-chatbot
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: SYSTEM_PROMPT
+        value: You are a helpful AI assistant. Answer clearly, keep responses concise, and be friendly.
